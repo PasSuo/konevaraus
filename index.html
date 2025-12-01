@@ -12,13 +12,16 @@
     h2 {
         margin-bottom: 20px;
     }
+
     .container {
         background: #fff;
         padding: 20px;
         border-radius: 8px;
-        max-width: 500px;
+        max-width: 600px;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        margin-bottom: 40px;
     }
+
     select, input {
         padding: 8px;
         margin: 5px 0;
@@ -39,10 +42,28 @@
     button:hover {
         background: #005fcc;
     }
-    .free-list {
+    .machine-list {
         margin-top: 20px;
-        font-size: 14px;
-        color: #444;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 10px;
+    }
+    .machine-box {
+        padding: 10px;
+        border-radius: 5px;
+        text-align: center;
+        color: white;
+        font-weight: bold;
+    }
+    .free {
+        background: #28a745;
+    }
+    .reserved {
+        background: #dc3545;
+    }
+
+    .filter-box {
+        margin-bottom: 20px;
     }
 </style>
 </head>
@@ -53,8 +74,8 @@
 
 <div class="container">
 
+    <!-- Varaus -->
     <h3>Varaa kone</h3>
-
     <label>Valitse vapaa kone:</label>
     <select id="freeMachines"></select>
 
@@ -65,6 +86,7 @@
 
     <hr style="margin: 30px 0;">
 
+    <!-- Vapautus -->
     <h3>Vapauta kone</h3>
     <label>Syötä koneen numero:</label>
     <input type="number" id="releaseMachine" placeholder="1–99">
@@ -74,14 +96,30 @@
 
     <button style="background:#ff4444;" onclick="releaseMachine()">Vapauta kone</button>
 
-    <div class="free-list" id="freeListNote"></div>
-
 </div>
 
+
+<div class="container">
+    <h3>Koneiden tila (reaaliaikainen)</h3>
+
+    <div class="filter-box">
+        <label>Suodata:</label>
+        <select id="filter" onchange="renderMachines()">
+            <option value="all">Kaikki</option>
+            <option value="free">Vapaat</option>
+            <option value="reserved">Varatut</option>
+        </select>
+    </div>
+
+    <div class="machine-list" id="machineList"></div>
+</div>
+
+
 <script type="module">
-    /* -----------------------------------------------
-       🔥 1. Firebase asetukset – KORVAA TÄMÄ OMIKSI!
-    ------------------------------------------------- */
+
+    /* -----------------------------------------------------
+       🔥 1. Firebase — KORVAA TÄMÄ OMIKSI TUNNUKSIKSI
+    ------------------------------------------------------ */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getDatabase, ref, onValue, update } from 
         "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -99,31 +137,37 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    /* -----------------------------------------------
-       2. Luo koneet 1–99
-    ------------------------------------------------- */
+
+    /* -----------------------------------------------------
+       2. Koneet 1–99
+    ------------------------------------------------------ */
     const MAX = 99;
     const allMachines = Array.from({ length: MAX }, (_, i) => i + 1);
+    let dbData = {}; // Firebase data tallennetaan tähän
 
-    /* -----------------------------------------------
-       3. Päivitä vapaat koneet dropdowniin
-    ------------------------------------------------- */
+
+    /* -----------------------------------------------------
+       3. Reaaliaikainen päivitys
+    ------------------------------------------------------ */
+    onValue(ref(db, "machines"), snapshot => {
+        dbData = snapshot.val() || {};
+        updateFreeSelect();
+        renderMachines();
+    });
+
+
+    /* -----------------------------------------------------
+       4. Päivitä vapaat koneet varausvalikkoon
+    ------------------------------------------------------ */
     const freeSelect = document.getElementById("freeMachines");
-    const freeListNote = document.getElementById("freeListNote");
 
-    function updateFreeList(data) {
-        const used = new Set();
-
-        for (let key in data) {
-            if (data[key].status === "varattu") {
-                used.add(Number(key));
-            }
-        }
-
-        const free = allMachines.filter(n => !used.has(n));
-
-        // Päivitä dropdown
+    function updateFreeSelect() {
         freeSelect.innerHTML = "";
+
+        const free = allMachines.filter(n => 
+            !dbData[n] || dbData[n].status === "vapaa"
+        );
+
         free.forEach(n => {
             let opt = document.createElement("option");
             opt.value = n;
@@ -131,26 +175,25 @@
             freeSelect.appendChild(opt);
         });
 
-        // Näytä vapaat koneet listana
-        freeListNote.textContent =
-            free.length
-            ? "Vapaat koneet: " + free.join(", ")
-            : "Ei vapaita koneita.";
+        if (free.length === 0) {
+            let opt = document.createElement("option");
+            opt.textContent = "Ei vapaita koneita";
+            freeSelect.appendChild(opt);
+        }
     }
 
-    onValue(ref(db, "machines"), snapshot => {
-        updateFreeList(snapshot.val() || {});
-    });
 
-    /* -----------------------------------------------
-       4. Koneen varaus
-    ------------------------------------------------- */
+    /* -----------------------------------------------------
+       5. Koneen varaus
+    ------------------------------------------------------ */
     window.reserveMachine = function() {
         const machine = freeSelect.value;
         const user = document.getElementById("reserveUser").value;
 
-        if (!machine) return alert("Ei vapaita koneita!");
-        if (!user) return alert("Anna käyttäjänumero!");
+        if (!machine || machine === "Ei vapaita koneita")
+            return alert("Ei vapaita koneita.");
+        if (!user)
+            return alert("Anna käyttäjänumero!");
 
         update(ref(db, "machines/" + machine), {
             status: "varattu",
@@ -160,17 +203,19 @@
         document.getElementById("reserveUser").value = "";
     };
 
-    /* -----------------------------------------------
-       5. Koneen vapautus
-    ------------------------------------------------- */
+
+    /* -----------------------------------------------------
+       6. Koneen vapautus
+    ------------------------------------------------------ */
     window.releaseMachine = function() {
         const machine = document.getElementById("releaseMachine").value;
         const user = document.getElementById("releaseUser").value;
 
-        if (!machine) return alert("Anna koneen numero!");
-        if (!user) return alert("Anna käyttäjänumero!");
+        if (!machine)
+            return alert("Anna koneen numero!");
+        if (!user)
+            return alert("Anna käyttäjänumero!");
 
-        // Vapautus: ei tarkisteta kuka sen ottaa pois (anonyymi)
         update(ref(db, "machines/" + machine), {
             status: "vapaa",
             user: ""
@@ -180,8 +225,34 @@
         document.getElementById("releaseUser").value = "";
     };
 
-</script>
 
+    /* -----------------------------------------------------
+       7. Reaaliaikainen status-väritys + suodatus
+    ------------------------------------------------------ */
+    const machineList = document.getElementById("machineList");
+
+    window.renderMachines = function() {
+        const filter = document.getElementById("filter").value;
+        machineList.innerHTML = "";
+
+        allMachines.forEach(n => {
+            const m = dbData[n] || { status: "vapaa", user: "" };
+            const isFree = m.status === "vapaa";
+
+            // Suodatus
+            if (filter === "free" && !isFree) return;
+            if (filter === "reserved" && isFree) return;
+
+            const box = document.createElement("div");
+            box.className = "machine-box " + (isFree ? "free" : "reserved");
+            box.textContent = isFree
+                ? `Kone ${n} — VAPAA`
+                : `Kone ${n} — VARATTU (${m.user})`;
+
+            machineList.appendChild(box);
+        });
+    };
+
+</script>
 </body>
 </html>
-
