@@ -150,9 +150,13 @@
        3. Reaaliaikainen päivitys
     ------------------------------------------------------ */
     onValue(ref(db, "machines"), snapshot => {
-        dbData = snapshot.val() || {};
-        updateFreeSelect();
-        renderMachines();
+    dbData = snapshot.val() || {};
+
+    // 🔥 Tarkista automaattiset timeoutit
+    checkTimeouts();
+
+    updateFreeSelect();
+    renderMachines();
     });
 
 
@@ -198,6 +202,7 @@
         update(ref(db, "machines/" + machine), {
             status: "varattu",
             user: user
+            timestamp: Date.now()
         });
 
         document.getElementById("reserveUser").value = "";
@@ -252,6 +257,32 @@
             machineList.appendChild(box);
         });
     };
+
+    /* -----------------------------------------------------
+       8. Automaattinen time-out tarkistus
+    ------------------------------------------------------ */
+    function checkTimeouts() {
+    const now = Date.now();
+    const timeoutMs = 24 * 60 * 60 * 1000; // 24h
+
+    allMachines.forEach(n => {
+        const m = dbData[n];
+        if (!m) return;
+
+        if (m.status === "varattu" && m.timestamp) {
+            if (now - m.timestamp > timeoutMs) {
+                // Vapauta kone automaattisesti
+                update(ref(db, "machines/" + n), {
+                    status: "vapaa",
+                    user: "",
+                    timestamp: null
+                });
+            }
+        }
+    });
+}
+
+    
 
 </script>
 </body>
