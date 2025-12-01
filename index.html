@@ -136,20 +136,31 @@ const machineList = document.getElementById("machineList");
 
 // Päivitä vapaat koneet valikkoon
 function updateFreeSelect() {
+    const previousValue = freeSelect.value; // muista nykyinen valinta
     freeSelect.innerHTML = "";
-    const free = allMachines.filter(n => !dbData[n] || dbData[n].status === "vapaa");
+
+    const free = allMachines.filter(n => 
+        !dbData[n] || dbData[n].status === "vapaa"
+    );
+
     free.forEach(n => {
         let opt = document.createElement("option");
         opt.value = n;
         opt.textContent = `Kone ${n}`;
         freeSelect.appendChild(opt);
     });
+
     if (free.length === 0) {
         let opt = document.createElement("option");
         opt.textContent = "Ei vapaita koneita";
         freeSelect.appendChild(opt);
+    } else if (free.includes(Number(previousValue))) {
+        freeSelect.value = previousValue; // palauta valinta, jos se on edelleen vapaa
+    } else {
+        freeSelect.value = free[0]; // muuten ensimmäinen vapaa
     }
 }
+
 
 // Renderöi koneet
 function renderMachines() {
