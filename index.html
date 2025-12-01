@@ -223,7 +223,8 @@
 
         update(ref(db, "machines/" + machine), {
             status: "vapaa",
-            user: ""
+            user: "",
+            timestamp: null
         });
 
         document.getElementById("releaseMachine").value = "";
