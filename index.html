@@ -313,6 +313,15 @@
                 ? `Kone ${n} — VAPAA`
                 : `Kone ${n} — VARATTU (${m.user})`;
 
+            // Klikattavuus: valitse vapaa kone varausvalikkoon
+            if (isFree) {
+                box.style.cursor = "pointer";
+                box.onclick = () => {
+                    freeSelect.value = n;
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                };
+            }
+
             machineList.appendChild(box);
         });
     };
@@ -340,16 +349,7 @@
         }
     });
 }
-
-        box.onclick = () => {
-    if (isFree) {
-        freeSelect.value = n;
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-};
-
-
-    
+   
 
 </script>
 </body>
