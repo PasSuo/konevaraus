@@ -134,9 +134,19 @@ let dbData = {}; // Paikallinen "tietokanta"
 const freeSelect = document.getElementById("freeMachines");
 const machineList = document.getElementById("machineList");
 
+let selectActive = false;
+
+freeSelect.addEventListener('focus', () => {
+    selectActive = true; // käyttäjä on valitsemassa
+});
+freeSelect.addEventListener('blur', () => {
+    selectActive = false; // käyttäjä sulki valikon
+});
+    
 // Päivitä vapaat koneet valikkoon
 function updateFreeSelect() {
-    const previousValue = freeSelect.value; // muista nykyinen valinta
+    if (selectActive) return; // älä päivitä valikkoa käyttäjän valitessa
+    const previousValue = freeSelect.value;
     freeSelect.innerHTML = "";
 
     const free = allMachines.filter(n => 
@@ -155,11 +165,12 @@ function updateFreeSelect() {
         opt.textContent = "Ei vapaita koneita";
         freeSelect.appendChild(opt);
     } else if (free.includes(Number(previousValue))) {
-        freeSelect.value = previousValue; // palauta valinta, jos se on edelleen vapaa
+        freeSelect.value = previousValue;
     } else {
-        freeSelect.value = free[0]; // muuten ensimmäinen vapaa
+        freeSelect.value = free[0];
     }
 }
+
 
 
 // Renderöi koneet
