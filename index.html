@@ -11,6 +11,7 @@
     }
     h2 {
         margin-bottom: 20px;
+        margin-top: 0;
     }
 
     .container {
@@ -20,6 +21,8 @@
         max-width: 600px;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
         margin-bottom: 40px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     select, input {
@@ -38,6 +41,7 @@
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        min-height: 45px
     }
     button:hover {
         background: #005fcc;
@@ -336,6 +340,14 @@
         }
     });
 }
+
+        box.onclick = () => {
+    if (isFree) {
+        freeSelect.value = n;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+};
+
 
     
 
