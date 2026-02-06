@@ -1,266 +1,280 @@
 <!DOCTYPE html>
-<html>
+<html lang="fi">
 <head>
 <meta charset="UTF-8" />
-<title>Koneiden Varausjärjestelmä (1-99)</title>
+<title>Koneiden varausjärjestelmä (1–99)</title>
+
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 40px;
-        background: #f7f7f7;
-    }
-    h2 {
-        margin-bottom: 20px;
-        margin-top: 0;
-        text-align: center;
-    }
+body {
+    font-family: Arial, sans-serif;
+    margin: 30px;
+    background: #121212;
+    color: #eaeaea;
+}
 
-    .container {
-        background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        max-width: 600px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        margin: 20px auto;
-    }
+h2, h3 {
+    text-align: center;
+}
 
-    select, input {
-        padding: 8px;
-        margin: 5px 0;
-        width: 100%;
-        font-size: 16px;
-    }
-    button {
-        padding: 10px;
-        margin-top: 10px;
-        width: 100%;
-        font-size: 16px;
-        background: #0078ff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        min-height: 45px;
-    }
-    button:hover {
-        background: #005fcc;
-    }
-    .machine-list {
-        margin-top: 20px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 10px;
-    }
-    .machine-box {
-        padding: 10px;
-        border-radius: 5px;
-        text-align: center;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    .free {
-        background: #28a745;
-    }
-    .reserved {
-        background: #dc3545;
-    }
+.main-layout {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    max-width: 1200px;
+    margin: auto;
+}
 
-    .filter-box {
-        margin-bottom: 20px;
-    }
+.container {
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 8px;
+}
 
-    /* Responsiivisuus */
-    @media (max-width: 600px) {
-        body { margin: 10px; }
-        .container { padding: 15px; margin-bottom: 20px; box-shadow: none; border-radius: 6px; }
-        select, input { font-size: 18px; padding: 10px; }
-        button { font-size: 18px; padding: 12px; }
-        .machine-list { grid-template-columns: repeat(1,1fr); }
-        .machine-box { font-size: 16px; padding: 15px; }
+select, input {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    font-size: 16px;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 16px;
+    background: #0078ff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button.danger {
+    background: #c62828;
+}
+
+button.secondary {
+    background: #444;
+}
+
+.machine-list {
+    margin-top: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.machine-box {
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.free {
+    background: #2e7d32;
+}
+
+.reserved {
+    background: #c62828;
+}
+
+@media (max-width: 900px) {
+    .main-layout {
+        grid-template-columns: 1fr;
     }
-    @media (max-width: 900px) {
-        .machine-list { grid-template-columns: repeat(2,1fr); }
-    }
+}
 </style>
 </head>
+
 <body>
 
 <h2>Koneiden varausjärjestelmä (1–99)</h2>
 
+<div class="main-layout">
+
+<!-- VASEN -->
 <div class="container">
-
     <h3>Varaa kone</h3>
-    <label>Valitse vapaa kone:</label>
     <select id="freeMachines"></select>
-
-    <label>Anna käyttäjänumero:</label>
-    <input type="number" id="reserveUser" placeholder="Esim. 123">
-
+    <input type="text" id="reserveUser" placeholder="Käyttäjänumero">
     <button onclick="reserveMachine()">Varaa kone</button>
 
-    <hr style="margin: 30px 0;">
+    <hr style="margin:30px 0">
 
     <h3>Vapauta kone</h3>
-    <label>Syötä koneen numero:</label>
-    <input type="number" id="releaseMachine" placeholder="1–99">
+    <input type="number" id="releaseMachine" placeholder="Koneen numero">
+    <input type="text" id="releaseUser" placeholder="Käyttäjänumero">
+    <button class="danger" onclick="releaseMachine()">Vapauta kone</button>
 
-    <label>Anna käyttäjänumero:</label>
-    <input type="number" id="releaseUser" placeholder="Esim. 123">
+    <hr style="margin:30px 0">
 
-    <button style="background:#ff4444;" onclick="releaseMachine()">Vapauta kone</button>
-
+    <button class="secondary" onclick="downloadLog()">⬇️ Lataa päivän loki</button>
 </div>
 
+<!-- OIKEA -->
 <div class="container">
     <h3>Koneiden tila</h3>
-    <div class="filter-box">
-        <label>Suodata:</label>
-        <select id="filter" onchange="renderMachines()">
-            <option value="all">Kaikki</option>
-            <option value="free">Vapaat</option>
-            <option value="reserved">Varatut</option>
-        </select>
-    </div>
+
+    <select id="filter" onchange="renderMachines()">
+        <option value="all">Kaikki</option>
+        <option value="free">Vapaat</option>
+        <option value="reserved">Varatut</option>
+    </select>
+
+    <p id="stats"></p>
 
     <div class="machine-list" id="machineList"></div>
+</div>
+
 </div>
 
 <script>
 const MAX = 99;
 const allMachines = Array.from({ length: MAX }, (_, i) => i + 1);
-let dbData = {}; // Paikallinen "tietokanta"
+let dbData = {};
+let selectActive = false;
 
 const freeSelect = document.getElementById("freeMachines");
 const machineList = document.getElementById("machineList");
 
-let selectActive = false;
+function getToday() {
+    return new Date().toISOString().slice(0, 10);
+}
 
-freeSelect.addEventListener('focus', () => {
-    selectActive = true; // käyttäjä on valitsemassa
-});
-freeSelect.addEventListener('blur', () => {
-    selectActive = false; // käyttäjä sulki valikon
-});
-    
-// Päivitä vapaat koneet valikkoon
+function saveData() {
+    localStorage.setItem("machineDB", JSON.stringify(dbData));
+    localStorage.setItem("machineDate", getToday());
+}
+
+function loadData() {
+    const savedDate = localStorage.getItem("machineDate");
+    if (savedDate !== getToday()) {
+        dbData = {};
+        saveData();
+    } else {
+        const data = localStorage.getItem("machineDB");
+        if (data) dbData = JSON.parse(data);
+    }
+}
+
+function logEvent(text) {
+    const key = "log-" + getToday();
+    const existing = localStorage.getItem(key) || "";
+    localStorage.setItem(key, existing + text + "\n");
+}
+
+function downloadLog() {
+    const key = "log-" + getToday();
+    const content = localStorage.getItem(key) || "Ei merkintöjä tälle päivälle.";
+    const blob = new Blob([content], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `konevaraus_${getToday()}.txt`;
+    a.click();
+}
+
+freeSelect.addEventListener("focus", () => selectActive = true);
+freeSelect.addEventListener("blur", () => selectActive = false);
+
 function updateFreeSelect() {
-    if (selectActive) return; // älä päivitä valikkoa käyttäjän valitessa
-    const previousValue = freeSelect.value;
+    if (selectActive) return;
     freeSelect.innerHTML = "";
 
-    const free = allMachines.filter(n => 
-        !dbData[n] || dbData[n].status === "vapaa"
-    );
+    const free = allMachines.filter(n => !dbData[n] || dbData[n].status === "vapaa");
 
     free.forEach(n => {
-        let opt = document.createElement("option");
+        const opt = document.createElement("option");
         opt.value = n;
         opt.textContent = `Kone ${n}`;
         freeSelect.appendChild(opt);
     });
 
     if (free.length === 0) {
-        let opt = document.createElement("option");
+        const opt = document.createElement("option");
         opt.textContent = "Ei vapaita koneita";
         freeSelect.appendChild(opt);
-    } else if (free.includes(Number(previousValue))) {
-        freeSelect.value = previousValue;
-    } else {
-        freeSelect.value = free[0];
     }
 }
 
-
-
-// Renderöi koneet
 function renderMachines() {
     const filter = document.getElementById("filter").value;
     machineList.innerHTML = "";
 
+    let freeCount = 0;
+
     allMachines.forEach(n => {
         const m = dbData[n] || { status: "vapaa", user: "" };
         const isFree = m.status === "vapaa";
+        if (isFree) freeCount++;
 
         if (filter === "free" && !isFree) return;
         if (filter === "reserved" && isFree) return;
 
         const box = document.createElement("div");
-        box.className = "machine-box " + (isFree ? "free" : "reserved");
-        box.textContent = isFree ? `Kone ${n} — VAPAA` : `Kone ${n} — VARATTU (${m.user})`;
+        box.className = `machine-box ${isFree ? "free" : "reserved"}`;
+        box.textContent = isFree
+            ? `Kone ${n} — VAPAA`
+            : `Kone ${n} — VARATTU (${m.user})`;
 
-        // Klikkaus valitsee koneen varaukseen
         box.onclick = () => {
             if (isFree) {
                 freeSelect.value = n;
-                window.scrollTo({ top: 0, behavior: "smooth" });
+            } else {
+                document.getElementById("releaseMachine").value = n;
+                document.getElementById("releaseUser").focus();
             }
         };
 
         machineList.appendChild(box);
     });
+
+    document.getElementById("stats").textContent =
+        `Vapaita: ${freeCount} / ${MAX}`;
 }
 
-// Varaus
 function reserveMachine() {
     const machine = freeSelect.value;
     const user = document.getElementById("reserveUser").value;
-
-    if (!machine || machine === "Ei vapaita koneita") return alert("Ei vapaita koneita.");
-    if (!user) return alert("Anna käyttäjänumero!");
+    if (!machine || !user) return alert("Täytä kaikki kentät!");
 
     dbData[machine] = {
         status: "varattu",
-        user: user,
+        user,
         timestamp: Date.now()
     };
 
+    logEvent(`Kone ${machine} varattu käyttäjälle ${user} klo ${new Date().toLocaleTimeString()}`);
+    saveData();
     updateFreeSelect();
     renderMachines();
     document.getElementById("reserveUser").value = "";
 }
 
-// Vapautus
 function releaseMachine() {
     const machine = document.getElementById("releaseMachine").value;
     const user = document.getElementById("releaseUser").value;
+    const m = dbData[machine];
 
-    if (!machine) return alert("Anna koneen numero!");
-    if (!user) return alert("Anna käyttäjänumero!");
+    if (!m || m.status !== "varattu") return alert("Kone ei ole varattu.");
+    if (m.user !== user) return alert("Käyttäjänumero ei täsmää!");
 
-    dbData[machine] = {
-        status: "vapaa",
-        user: "",
-        timestamp: null
-    };
+    dbData[machine] = { status: "vapaa", user: "", timestamp: null };
 
+    logEvent(`Kone ${machine} vapautettu käyttäjältä ${user} klo ${new Date().toLocaleTimeString()}`);
+    saveData();
     updateFreeSelect();
     renderMachines();
+
     document.getElementById("releaseMachine").value = "";
     document.getElementById("releaseUser").value = "";
 }
 
-// Automaattinen timeout (24h, testissä nopeutettavissa)
-function checkTimeouts() {
-    const now = Date.now();
-    const timeoutMs = 24*60*60*1000; // 24h
-    allMachines.forEach(n => {
-        const m = dbData[n];
-        if (!m) return;
-        if (m.status === "varattu" && m.timestamp) {
-            if (now - m.timestamp > timeoutMs) {
-                dbData[n] = { status: "vapaa", user: "", timestamp: null };
-            }
-        }
-    });
-    updateFreeSelect();
-    renderMachines();
-}
-
-// Päivitys 1 sekunnin välein (automaattinen timeout ja UI)
-setInterval(checkTimeouts, 1000);
-
-// Ensimmäinen renderöinti
+loadData();
 updateFreeSelect();
 renderMachines();
 </script>
