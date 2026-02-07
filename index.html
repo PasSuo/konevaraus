@@ -87,4 +87,140 @@ button {
     text-align: center;
 }
 </style>
-</he
+</head>
+
+<body>
+
+<h2>Koneiden varausjärjestelmä (1–99)</h2>
+
+<div class="machine-list" id="machineList"></div>
+
+<div class="footer">
+    <button class="cancel" onclick="downloadLog()">⬇️ Lataa päivän loki</button>
+</div>
+
+<!-- MODAL -->
+<div id="modal">
+    <div class="modal-box">
+        <h3 id="modalTitle"></h3>
+        <p id="modalText"></p>
+        <input type="text" id="modalUser" placeholder="Käyttäjänumero">
+        <button id="modalConfirm" class="confirm"></button>
+        <button class="cancel" onclick="closeModal()">Peruuta</button>
+    </div>
+</div>
+
+<script>
+const MAX = 99;
+const machines = Array.from({ length: MAX }, (_, i) => i + 1);
+let dbData = {};
+let currentMachine = null;
+let currentAction = null;
+
+function getToday() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function saveData() {
+    localStorage.setItem("machineDB", JSON.stringify(dbData));
+    localStorage.setItem("machineDate", getToday());
+}
+
+function loadData() {
+    if (localStorage.getItem("machineDate") !== getToday()) {
+        dbData = {};
+        saveData();
+    } else {
+        const d = localStorage.getItem("machineDB");
+        if (d) dbData = JSON.parse(d);
+    }
+}
+
+function logEvent(text) {
+    const key = "log-" + getToday();
+    const old = localStorage.getItem(key) || "";
+    localStorage.setItem(key, old + text + "\n");
+}
+
+function downloadLog() {
+    const content = localStorage.getItem("log-" + getToday()) || "Ei merkintöjä.";
+    const blob = new Blob([content], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `konevaraus_${getToday()}.txt`;
+    a.click();
+}
+
+function render() {
+    const list = document.getElementById("machineList");
+    list.innerHTML = "";
+
+    machines.forEach(n => {
+        const m = dbData[n] || { status: "vapaa", user: "" };
+        const div = document.createElement("div");
+        div.className = `machine ${m.status === "vapaa" ? "free" : "reserved"}`;
+        div.textContent = m.status === "vapaa"
+            ? `Kone ${n}\nVAPAA`
+            : `Kone ${n}\nVARATTU (${m.user})`;
+
+        div.onclick = () => openModal(n, m);
+        list.appendChild(div);
+    });
+}
+
+function openModal(machine, data) {
+    currentMachine = machine;
+    currentAction = data.status === "vapaa" ? "reserve" : "release";
+
+    document.getElementById("modal").style.display = "flex";
+    document.getElementById("modalUser").value = "";
+
+    if (currentAction === "reserve") {
+        modalTitle.textContent = `Varaa kone ${machine}`;
+        modalText.textContent = "Anna käyttäjänumero:";
+        modalConfirm.textContent = "Varaa";
+        modalConfirm.className = "confirm";
+    } else {
+        modalTitle.textContent = `Vapauta kone ${machine}`;
+        modalText.textContent = "Anna käyttäjänumero:";
+        modalConfirm.textContent = "Vapauta";
+        modalConfirm.className = "danger";
+    }
+}
+
+function closeModal() {
+    document.getElementById("modal").style.display = "none";
+}
+
+modalConfirm.onclick = () => {
+    const user = modalUser.value;
+    if (!user) return alert("Anna käyttäjänumero!");
+
+    const m = dbData[currentMachine];
+
+    if (currentAction === "reserve") {
+        dbData[currentMachine] = {
+            status: "varattu",
+            user,
+            timestamp: Date.now()
+        };
+        logEvent(`Kone ${currentMachine} varattu käyttäjälle ${user} klo ${new Date().toLocaleTimeString()}`);
+    } else {
+        if (!m || m.user !== user)
+            return alert("Käyttäjänumero ei täsmää!");
+
+        dbData[currentMachine] = { status: "vapaa", user: "", timestamp: null };
+        logEvent(`Kone ${currentMachine} vapautettu käyttäjältä ${user} klo ${new Date().toLocaleTimeString()}`);
+    }
+
+    saveData();
+    closeModal();
+    render();
+};
+
+loadData();
+render();
+</script>
+
+</body>
+</html>
