@@ -3,263 +3,120 @@
 <head>
 <meta charset="UTF-8">
 <title>Koneiden varaus</title>
-
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background: #121212;
-    color: #eaeaea;
-    margin: 20px;
-}
-
-h2 {
-    text-align: center;
-}
-
-.machine-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-    max-width: 1200px;
-    margin: auto;
-}
-
-.machine {
-    padding: 20px;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: bold;
-    cursor: pointer;
-    user-select: none;
-}
-
-.free { background: #2e7d32; }
-.reserved { background: #c62828; }
-
-#modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-box {
-    background: #1e1e1e;
-    padding: 25px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 350px;
-}
-
-.modal-box h3 {
-    margin-top: 0;
-    text-align: center;
-}
-
-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    background: #2a2a2a;
-    color: white;
-    border: 1px solid #444;
-}
-
-button {
-    width: 100%;
-    padding: 12px;
-    margin-top: 12px;
-    font-size: 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.confirm { background: #0078ff; color: white; }
-.danger { background: #c62828; color: white; }
-.cancel { background: #444; }
-
-.footer {
-    max-width: 1200px;
-    margin: 20px auto;
-    text-align: center;
-}
+body { font-family: Arial; background:#121212; color:#eaeaea; margin:20px; }
+h2 { text-align:center; }
+.machine-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; max-width:1200px; margin:auto; }
+.machine { padding:20px; border-radius:8px; text-align:center; font-weight:bold; cursor:pointer; user-select:none; }
+.free { background:#2e7d32; }
+.reserved { background:#c62828; }
+#modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; }
+.modal-box { background:#1e1e1e; padding:25px; border-radius:8px; width:90%; max-width:350px; }
+.modal-box h3 { margin-top:0; text-align:center; }
+input { width:100%; padding:10px; margin-top:10px; background:#2a2a2a; color:white; border:1px solid #444; }
+button { width:100%; padding:12px; margin-top:12px; font-size:16px; border:none; border-radius:5px; cursor:pointer; }
+.confirm { background:#0078ff; color:white; }
+.danger { background:#c62828; color:white; }
+.cancel { background:#444; }
+.footer { max-width:1200px; margin:20px auto; text-align:center; }
 </style>
 </head>
-
 <body>
 
 <h2>Koneiden varausjärjestelmä (1–99)</h2>
-
 <div class="machine-list" id="machineList"></div>
+<div class="footer"><button class="cancel" onclick="downloadLog()">⬇️ Lataa päivän loki</button></div>
 
-<div class="footer">
-    <button class="cancel" onclick="downloadLog()">⬇️ Lataa päivän loki</button>
-</div>
-
-<!-- MODAL -->
 <div id="modal">
-    <div class="modal-box">
-        <h3 id="modalTitle"></h3>
-        <p id="modalText"></p>
-        <input type="text" id="modalUser" placeholder="Käyttäjänumero" inputmode="numeric" pattern="\d{3}">
-        <button id="modalConfirm" class="confirm"></button>
-        <button class="cancel" onclick="closeModal()">Peruuta</button>
-    </div>
+<div class="modal-box">
+<h3 id="modalTitle"></h3>
+<p id="modalText"></p>
+<input type="text" id="modalUser" placeholder="Käyttäjänumero" inputmode="numeric" pattern="\d{3}">
+<button id="modalConfirm" class="confirm"></button>
+<button class="cancel" onclick="closeModal()">Peruuta</button>
+</div>
 </div>
 
 <script>
 const MAX = 99;
 const machines = Array.from({ length: MAX }, (_, i) => i + 1);
-let dbData = {};
-let currentMachine = null;
-let currentAction = null;
+let dbData = {}, currentMachine=null, currentAction=null;
+const WEBAPP_URL = "YOUR_SCRIPT_WEBAPP_URL"; // <<--- Apps Script Web App URL
 
-function getToday() {
-    return new Date().toISOString().slice(0, 10);
+function getToday(){return new Date().toISOString().slice(0,10);}
+function formatDuration(ms){const t=Math.floor(ms/60000);const h=Math.floor(t/60);const m=t%60;return h>0?`${h}h ${m}min`:`${m}min`;}
+
+async function loadData(){
+    try{
+        const res = await fetch(WEBAPP_URL);
+        dbData = await res.json();
+        render();
+    } catch(err){console.error(err);}
 }
 
-function saveData() {
-    localStorage.setItem("machineDB", JSON.stringify(dbData));
-    localStorage.setItem("machineDate", getToday());
-}
-
-function loadData() {
-    const today = getToday();
-    const savedDate = localStorage.getItem("machineDate");
-
-    if (savedDate !== today) {
-        // Päivitä ensin päivämäärä
-        localStorage.setItem("machineDate", today);
-
-        const oldData = JSON.parse(localStorage.getItem("machineDB") || "{}");
-
-        Object.keys(oldData).forEach(n => {
-            if (oldData[n].status === "varattu") {
-                logEvent(`Kone ${n} vapautettu automaattisesti päivän vaihtuessa`);
-            }
-        });
-
-        dbData = {};
-        saveData();
-    } else {
-        const d = localStorage.getItem("machineDB");
-        if (d) dbData = JSON.parse(d);
-    }
-}
-
-
-function formatDuration(ms) {
-    const totalMinutes = Math.floor(ms / 60000);
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-
-    if (h > 0) return `${h}h ${m}min`;
-    return `${m}min`;
-}
-
-
-function logEvent(text) {
+function logEvent(text){
     const key = "log-" + getToday();
-    const old = localStorage.getItem(key) || "";
+    const old = localStorage.getItem(key)||"";
     localStorage.setItem(key, old + text + "\n");
 }
-
-function downloadLog() {
+function downloadLog(){
     const content = localStorage.getItem("log-" + getToday()) || "Ei merkintöjä.";
-    const blob = new Blob([content], { type: "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `konevaraus_${getToday()}.txt`;
+    const blob = new Blob([content],{type:"text/plain"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=`konevaraus_${getToday()}.txt`;
     a.click();
 }
 
-function render() {
+function render(){
     const list = document.getElementById("machineList");
-    list.innerHTML = "";
-
-    machines.forEach(n => {
-        const m = dbData[n] || { status: "vapaa", user: "" };
-        const div = document.createElement("div");
-        div.className = `machine ${m.status === "vapaa" ? "free" : "reserved"}`;
-        if (m.status === "vapaa") {
-        div.textContent = `Kone ${n}\nVAPAA`;
-        } else {
-        const duration = m.timestamp
-        ? formatDuration(Date.now() - m.timestamp)
-        : "";
-
-    div.textContent = `Kone ${n}\nVARATTU (${m.user})\n⏱️ ${duration}`;
-}
-
-        div.onclick = () => openModal(n, m);
+    list.innerHTML="";
+    machines.forEach(n=>{
+        const m=dbData[n]||{status:"vapaa",user:""};
+        const div=document.createElement("div");
+        div.className=`machine ${m.status==="vapaa"?"free":"reserved"}`;
+        const duration = m.timestamp?formatDuration(Date.now()-m.timestamp):"";
+        div.textContent=m.status==="vapaa"?`Kone ${n}\nVAPAA`:`Kone ${n}\nVARATTU (${m.user})\n⏱️ ${duration}`;
+        div.onclick=()=>openModal(n,m);
         list.appendChild(div);
     });
 }
 
-function openModal(machine, data) {
-    currentMachine = machine;
-    currentAction = data.status === "vapaa" ? "reserve" : "release";
-
-    document.getElementById("modal").style.display = "flex";
-    document.getElementById("modalUser").value = "";
-
-    if (currentAction === "reserve") {
-        modalTitle.textContent = `Varaa kone ${machine}`;
-        modalText.textContent = "Anna käyttäjänumero:";
-        modalConfirm.textContent = "Varaa";
-        modalConfirm.className = "confirm";
-    } else {
-        modalTitle.textContent = `Vapauta kone ${machine}`;
-        modalText.textContent = "Anna käyttäjänumero:";
-        modalConfirm.textContent = "Vapauta";
-        modalConfirm.className = "danger";
-    }
+function openModal(machine,data){
+    currentMachine=machine;
+    currentAction=data.status==="vapaa"?"reserve":"release";
+    document.getElementById("modal").style.display="flex";
+    document.getElementById("modalUser").value="";
+    document.getElementById("modalTitle").textContent=currentAction==="reserve"?`Varaa kone ${machine}`:`Vapauta kone ${machine}`;
+    document.getElementById("modalText").textContent="Anna käyttäjänumero:";
+    const btn=document.getElementById("modalConfirm");
+    btn.textContent=currentAction==="reserve"?"Varaa":"Vapauta";
+    btn.className=currentAction==="reserve"?"confirm":"danger";
 }
 
-function closeModal() {
-    document.getElementById("modal").style.display = "none";
-}
+function closeModal(){document.getElementById("modal").style.display="none";}
 
-modalConfirm.onclick = () => {
-    const user = modalUser.value.trim();
-
-    if (!user)
-        return alert("Anna käyttäjänumero!");
-
-    if (!/^\d{3}$/.test(user))
-        return alert("Käyttäjänumeron tulee olla 3-numeroinen");
-
-    const m = dbData[currentMachine];
-
-    if (currentAction === "reserve") {
-        dbData[currentMachine] = {
-            status: "varattu",
-            user,
-            timestamp: Date.now()
-        };
-        logEvent(`Kone ${currentMachine} varattu käyttäjälle ${user} klo ${new Date().toLocaleTimeString()}`);
-    } else {
-        if (!m || m.user !== user)
-            return alert("Käyttäjänumero ei täsmää!");
-
-        dbData[currentMachine] = { status: "vapaa", user: "", timestamp: null };
-        logEvent(`Kone ${currentMachine} vapautettu käyttäjältä ${user} klo ${new Date().toLocaleTimeString()}`);
-    }
-
-    saveData();
-    closeModal();
-    render();
+document.getElementById("modalConfirm").onclick=async ()=>{
+    const user=document.getElementById("modalUser").value.trim();
+    if(!user){alert("Anna käyttäjänumero!"); return;}
+    if(!/^\d{3}$/.test(user)){alert("Käyttäjänumeron tulee olla 3-numeroinen"); return;}
+    try{
+        const res=await fetch(WEBAPP_URL,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({machine:currentMachine,user,action:currentAction})
+        });
+        const data=await res.json();
+        if(data.error){alert(data.error); return;}
+        dbData=data;
+        logEvent(`${currentAction==="reserve"?"Varattu":"Vapautettu"} kone ${currentMachine} käyttäjälle ${user}`);
+        closeModal();
+        render();
+    }catch(err){alert("Virhe palvelimessa: "+err.message);}
 };
 
-
-setInterval(render, 60000); // päivitä minuutin välein
-
+setInterval(loadData,60000);
 loadData();
-render();
 </script>
-
 </body>
 </html>
