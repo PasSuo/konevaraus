@@ -104,7 +104,7 @@ button {
     <div class="modal-box">
         <h3 id="modalTitle"></h3>
         <p id="modalText"></p>
-        <input type="text" id="modalUser" placeholder="Käyttäjänumero">
+        <input type="text" id="modalUser" placeholder="Käyttäjänumero" inputmode="numeric" pattern="\d{3}">
         <button id="modalConfirm" class="confirm"></button>
         <button class="cancel" onclick="closeModal()">Peruuta</button>
     </div>
@@ -224,8 +224,13 @@ function closeModal() {
 }
 
 modalConfirm.onclick = () => {
-    const user = modalUser.value;
-    if (!user) return alert("Anna käyttäjänumero!");
+    const user = modalUser.value.trim();
+
+    if (!user)
+        return alert("Anna käyttäjänumero!");
+
+    if (!/^\d{3}$/.test(user))
+        return alert("Käyttäjänumeron tulee olla 3-numeroinen");
 
     const m = dbData[currentMachine];
 
@@ -248,6 +253,7 @@ modalConfirm.onclick = () => {
     closeModal();
     render();
 };
+
 
 setInterval(render, 60000); // päivitä minuutin välein
 
