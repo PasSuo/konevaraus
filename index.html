@@ -131,6 +131,9 @@ function loadData() {
     const savedDate = localStorage.getItem("machineDate");
 
     if (savedDate !== today) {
+        // Päivitä ensin päivämäärä
+        localStorage.setItem("machineDate", today);
+
         const oldData = JSON.parse(localStorage.getItem("machineDB") || "{}");
 
         Object.keys(oldData).forEach(n => {
@@ -140,13 +143,13 @@ function loadData() {
         });
 
         dbData = {};
-        localStorage.setItem("machineDate", today);
         saveData();
     } else {
         const d = localStorage.getItem("machineDB");
         if (d) dbData = JSON.parse(d);
     }
 }
+
 
 function formatDuration(ms) {
     const totalMinutes = Math.floor(ms / 60000);
