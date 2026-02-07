@@ -148,6 +148,15 @@ function loadData() {
     }
 }
 
+function formatDuration(ms) {
+    const totalMinutes = Math.floor(ms / 60000);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+
+    if (h > 0) return `${h}h ${m}min`;
+    return `${m}min`;
+}
+
 
 function logEvent(text) {
     const key = "log-" + getToday();
@@ -172,9 +181,15 @@ function render() {
         const m = dbData[n] || { status: "vapaa", user: "" };
         const div = document.createElement("div");
         div.className = `machine ${m.status === "vapaa" ? "free" : "reserved"}`;
-        div.textContent = m.status === "vapaa"
-            ? `Kone ${n}\nVAPAA`
-            : `Kone ${n}\nVARATTU (${m.user})`;
+        if (m.status === "vapaa") {
+        div.textContent = `Kone ${n}\nVAPAA`;
+        } else {
+        const duration = m.timestamp
+        ? formatDuration(Date.now() - m.timestamp)
+        : "";
+
+    div.textContent = `Kone ${n}\nVARATTU (${m.user})\n⏱️ ${duration}`;
+}
 
         div.onclick = () => openModal(n, m);
         list.appendChild(div);
@@ -230,6 +245,8 @@ modalConfirm.onclick = () => {
     closeModal();
     render();
 };
+
+setInterval(render, 60000); // päivitä minuutin välein
 
 loadData();
 render();
