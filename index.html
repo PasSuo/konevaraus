@@ -41,7 +41,7 @@ button { width:100%; padding:12px; margin-top:12px; font-size:16px; border:none;
 const MAX = 99;
 const machines = Array.from({ length: MAX }, (_, i) => i + 1);
 let dbData = {}, currentMachine=null, currentAction=null;
-const WEBAPP_URL = "YOUR_SCRIPT_WEBAPP_URL"; // <<--- Apps Script Web App URL
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzNCG_ynwwkolGo0G93M1-kreWL2FPtf6GT0lIuK_LUgW8lqP8xaOCQrw3wZmgUWThwfQ/exec"; // <<--- Apps URL
 
 function getToday(){return new Date().toISOString().slice(0,10);}
 function formatDuration(ms){const t=Math.floor(ms/60000);const h=Math.floor(t/60);const m=t%60;return h>0?`${h}h ${m}min`:`${m}min`;}
