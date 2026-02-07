@@ -127,14 +127,27 @@ function saveData() {
 }
 
 function loadData() {
-    if (localStorage.getItem("machineDate") !== getToday()) {
+    const today = getToday();
+    const savedDate = localStorage.getItem("machineDate");
+
+    if (savedDate !== today) {
+        const oldData = JSON.parse(localStorage.getItem("machineDB") || "{}");
+
+        Object.keys(oldData).forEach(n => {
+            if (oldData[n].status === "varattu") {
+                logEvent(`Kone ${n} vapautettu automaattisesti päivän vaihtuessa`);
+            }
+        });
+
         dbData = {};
+        localStorage.setItem("machineDate", today);
         saveData();
     } else {
         const d = localStorage.getItem("machineDB");
         if (d) dbData = JSON.parse(d);
     }
 }
+
 
 function logEvent(text) {
     const key = "log-" + getToday();
