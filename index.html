@@ -8,16 +8,13 @@ body { font-family: Arial; background:#121212; color:#eaeaea; margin:20px; }
 h2 { text-align:center; }
 .machine-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; max-width:1200px; margin:auto; }
 .machine { padding:20px; border-radius:8px; text-align:center; font-weight:bold; cursor:pointer; user-select:none; }
-.free { background:#2e7d32; }
-.reserved { background:#c62828; }
+.free { background:#2e7d32; } .reserved { background:#c62828; }
 #modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; }
 .modal-box { background:#1e1e1e; padding:25px; border-radius:8px; width:90%; max-width:350px; }
 .modal-box h3 { margin-top:0; text-align:center; }
 input { width:100%; padding:10px; margin-top:10px; background:#2a2a2a; color:white; border:1px solid #444; }
 button { width:100%; padding:12px; margin-top:12px; font-size:16px; border:none; border-radius:5px; cursor:pointer; }
-.confirm { background:#0078ff; color:white; }
-.danger { background:#c62828; color:white; }
-.cancel { background:#444; }
+.confirm { background:#0078ff; color:white; } .danger { background:#c62828; color:white; } .cancel { background:#444; }
 .footer { max-width:1200px; margin:20px auto; text-align:center; }
 </style>
 </head>
@@ -28,95 +25,79 @@ button { width:100%; padding:12px; margin-top:12px; font-size:16px; border:none;
 <div class="footer"><button class="cancel" onclick="downloadLog()">⬇️ Lataa päivän loki</button></div>
 
 <div id="modal">
-<div class="modal-box">
-<h3 id="modalTitle"></h3>
-<p id="modalText"></p>
-<input type="text" id="modalUser" placeholder="Käyttäjänumero" inputmode="numeric" pattern="\d{3}">
-<button id="modalConfirm" class="confirm"></button>
-<button class="cancel" onclick="closeModal()">Peruuta</button>
-</div>
+  <div class="modal-box">
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+    <input type="text" id="modalUser" placeholder="Käyttäjänumero" inputmode="numeric" pattern="\d{3}">
+    <button id="modalConfirm" class="confirm"></button>
+    <button class="cancel" onclick="closeModal()">Peruuta</button>
+  </div>
 </div>
 
 <script>
-const MAX = 99;
-const machines = Array.from({ length: MAX }, (_, i) => i + 1);
-let dbData = {}, currentMachine=null, currentAction=null;
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzNCG_ynwwkolGo0G93M1-kreWL2FPtf6GT0lIuK_LUgW8lqP8xaOCQrw3wZmgUWThwfQ/exec"; // <<--- Apps URL
+let machinesData = {};
+let currentMachine = null;
+let currentAction = null;
 
-function getToday(){return new Date().toISOString().slice(0,10);}
-function formatDuration(ms){const t=Math.floor(ms/60000);const h=Math.floor(t/60);const m=t%60;return h>0?`${h}h ${m}min`:`${m}min`;}
-
-async function loadData(){
-    try{
-        const res = await fetch(WEBAPP_URL);
-        dbData = await res.json();
-        render();
-    } catch(err){console.error(err);}
+function fetchMachines() {
+  google.script.run.withSuccessHandler(data => {
+    machinesData = data;
+    renderMachines();
+  }).getMachines();
 }
 
-function logEvent(text){
-    const key = "log-" + getToday();
-    const old = localStorage.getItem(key)||"";
-    localStorage.setItem(key, old + text + "\n");
-}
-function downloadLog(){
-    const content = localStorage.getItem("log-" + getToday()) || "Ei merkintöjä.";
-    const blob = new Blob([content],{type:"text/plain"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download=`konevaraus_${getToday()}.txt`;
-    a.click();
-}
-
-function render(){
-    const list = document.getElementById("machineList");
-    list.innerHTML="";
-    machines.forEach(n=>{
-        const m=dbData[n]||{status:"vapaa",user:""};
-        const div=document.createElement("div");
-        div.className=`machine ${m.status==="vapaa"?"free":"reserved"}`;
-        const duration = m.timestamp?formatDuration(Date.now()-m.timestamp):"";
-        div.textContent=m.status==="vapaa"?`Kone ${n}\nVAPAA`:`Kone ${n}\nVARATTU (${m.user})\n⏱️ ${duration}`;
-        div.onclick=()=>openModal(n,m);
-        list.appendChild(div);
-    });
+function renderMachines() {
+  const list = document.getElementById("machineList");
+  list.innerHTML = "";
+  Object.keys(machinesData).forEach(n => {
+    const m = machinesData[n];
+    const div = document.createElement("div");
+    div.className = "machine " + (m.status==="vapaa"?"free":"reserved");
+    const duration = m.timestamp ? formatDuration(Date.now()-m.timestamp) : "";
+    div.textContent = m.status==="vapaa" ? `Kone ${n}\nVAPAA` : `Kone ${n}\nVARATTU (${m.user})\n⏱️ ${duration}`;
+    div.onclick = () => openModal(n, m);
+    list.appendChild(div);
+  });
 }
 
-function openModal(machine,data){
-    currentMachine=machine;
-    currentAction=data.status==="vapaa"?"reserve":"release";
-    document.getElementById("modal").style.display="flex";
-    document.getElementById("modalUser").value="";
-    document.getElementById("modalTitle").textContent=currentAction==="reserve"?`Varaa kone ${machine}`:`Vapauta kone ${machine}`;
-    document.getElementById("modalText").textContent="Anna käyttäjänumero:";
-    const btn=document.getElementById("modalConfirm");
-    btn.textContent=currentAction==="reserve"?"Varaa":"Vapauta";
-    btn.className=currentAction==="reserve"?"confirm":"danger";
+function formatDuration(ms) {
+  const totalMinutes = Math.floor(ms/60000), h = Math.floor(totalMinutes/60), m = totalMinutes%60;
+  return h>0? `${h}h ${m}min` : `${m}min`;
 }
 
-function closeModal(){document.getElementById("modal").style.display="none";}
+function openModal(machine, data) {
+  currentMachine = machine;
+  currentAction = data.status==="vapaa"?"reserve":"release";
+  document.getElementById("modal").style.display="flex";
+  document.getElementById("modalUser").value="";
+  document.getElementById("modalTitle").textContent = currentAction==="reserve"?`Varaa kone ${machine}`:`Vapauta kone ${machine}`;
+  document.getElementById("modalText").textContent = "Anna käyttäjänumero:";
+  document.getElementById("modalConfirm").textContent = currentAction==="reserve"?"Varaa":"Vapauta";
+  document.getElementById("modalConfirm").className = currentAction==="reserve"?"confirm":"danger";
+}
 
-document.getElementById("modalConfirm").onclick=async ()=>{
-    const user=document.getElementById("modalUser").value.trim();
-    if(!user){alert("Anna käyttäjänumero!"); return;}
-    if(!/^\d{3}$/.test(user)){alert("Käyttäjänumeron tulee olla 3-numeroinen"); return;}
-    try{
-        const res=await fetch(WEBAPP_URL,{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({machine:currentMachine,user,action:currentAction})
-        });
-        const data=await res.json();
-        if(data.error){alert(data.error); return;}
-        dbData=data;
-        logEvent(`${currentAction==="reserve"?"Varattu":"Vapautettu"} kone ${currentMachine} käyttäjälle ${user}`);
-        closeModal();
-        render();
-    }catch(err){alert("Virhe palvelimessa: "+err.message);}
-};
+function closeModal() { document.getElementById("modal").style.display="none"; }
 
-setInterval(loadData,60000);
-loadData();
+document.getElementById("modalConfirm").onclick = () => {
+  const user = document.getElementById("modalUser").value.trim();
+  if(!/^\d{3}$/.test(user)) return alert("Käyttäjänumeron tulee olla 3-numeroinen");
+
+  if(currentAction==="reserve") {
+    google.script.run.withSuccessHandler(data=>{
+      machinesData=data; renderMachines(); closeModal();
+    }).reserveMachine(currentMachine, user);
+  } else {
+    google.script.run.withSuccessHandler(data=>{
+      machinesData=data; renderMachines(); closeModal();
+    }).releaseMachine(currentMachine, user);
+  }
+}
+
+function downloadLog() { alert("Logit tallennetaan Sheetsiin, ei tiedostona tässä versiossa."); }
+
+fetchMachines();
+setInterval(fetchMachines,60000);
 </script>
+
 </body>
 </html>
